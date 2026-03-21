@@ -20,11 +20,14 @@ interface Notification {
 
 const typeIcons: Record<string, React.ReactNode> = {
   COMMENT: <MessageSquare className="h-4 w-4 text-blue-400" />,
+  REPLY: <MessageSquare className="h-4 w-4 text-blue-300" />,
   USEFUL_VOTE: <ThumbsUp className="h-4 w-4 text-amber-400" />,
-  RESONANCE_VOTE: <Heart className="h-4 w-4 text-pink-400" />,
+  RESONANCE: <Heart className="h-4 w-4 text-pink-400" />,
   BOOKMARK: <Bookmark className="h-4 w-4 text-green-400" />,
   FOLLOW: <UserPlus className="h-4 w-4 text-purple-400" />,
-  REVIEW: <Shield className="h-4 w-4 text-amber-500" />,
+  REVIEW_APPROVED: <Shield className="h-4 w-4 text-green-500" />,
+  REVIEW_REJECTED: <Shield className="h-4 w-4 text-red-400" />,
+  REPORT_HANDLED: <Bell className="h-4 w-4 text-amber-500" />,
   SYSTEM: <Bell className="h-4 w-4 text-stone-400" />,
 };
 
@@ -43,7 +46,7 @@ export default function NotificationsPage() {
     if (status !== "authenticated") return;
     setLoading(true);
     const params = new URLSearchParams();
-    if (showUnread) params.set("unread", "true");
+    if (showUnread) params.set("unreadOnly", "true");
     fetch(`/api/notifications?${params}`)
       .then((r) => r.json())
       .then((data) => setNotifications(data.notifications || []))
@@ -56,7 +59,7 @@ export default function NotificationsPage() {
       await fetch("/api/notifications", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markAll: true }),
+        body: JSON.stringify({}),
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       toast({ title: "已全部标记为已读" });

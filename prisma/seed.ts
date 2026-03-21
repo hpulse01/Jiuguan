@@ -3,14 +3,110 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+const SUPER_ADMIN_EMAIL = "hpulse001@gmail.com";
+const SUPER_ADMIN_PASSWORD = "123456";
+
+async function ensureSuperAdmin() {
+  console.log("🔐 初始化超级管理员...\n");
+
+  const passwordHash = await bcrypt.hash(SUPER_ADMIN_PASSWORD, 12);
+
+  // Step 1: 降级所有非指定邮箱的 SUPER_ADMIN
+  const illegitimateSuperAdmins = await prisma.user.findMany({
+    where: {
+      role: "SUPER_ADMIN",
+      email: { not: SUPER_ADMIN_EMAIL },
+    },
+  });
+
+  for (const user of illegitimateSuperAdmins) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { role: "ADMIN" },
+    });
+    console.log(`⚠️ 已将 ${user.email} 从 SUPER_ADMIN 降级为 ADMIN`);
+  }
+
+  // Step 2: 创建或更新超级管理员
+  const existingUser = await prisma.user.findUnique({
+    where: { email: SUPER_ADMIN_EMAIL },
+  });
+
+  if (existingUser) {
+    await prisma.user.update({
+      where: { email: SUPER_ADMIN_EMAIL },
+      data: {
+        role: "SUPER_ADMIN",
+        passwordHash,
+        isBanned: false,
+      },
+    });
+
+    // 确保 profile 存在
+    await prisma.profile.upsert({
+      where: { userId: existingUser.id },
+      update: {},
+      create: {
+        userId: existingUser.id,
+        nickname: "酒馆掌柜",
+        bio: "酒馆的最高管理者，守护这个分享失败经历的社区。",
+      },
+    });
+
+    console.log(`✅ 超级管理员已更新: ${SUPER_ADMIN_EMAIL}`);
+  } else {
+    await prisma.user.create({
+      data: {
+        email: SUPER_ADMIN_EMAIL,
+        username: "superadmin",
+        passwordHash,
+        role: "SUPER_ADMIN",
+        profile: {
+          create: {
+            nickname: "酒馆掌柜",
+            bio: "酒馆的最高管理者，守护这个分享失败经历的社区。",
+          },
+        },
+      },
+    });
+    console.log(`✅ 超级管理员已创建: ${SUPER_ADMIN_EMAIL}`);
+  }
+
+  // Step 3: 最终验证 - 确保只有一个 SUPER_ADMIN
+  const superAdminCount = await prisma.user.count({
+    where: { role: "SUPER_ADMIN" },
+  });
+
+  if (superAdminCount !== 1) {
+    throw new Error(
+      `超级管理员数量异常：期望 1，实际 ${superAdminCount}。请检查数据库。`
+    );
+  }
+
+  const superAdmin = await prisma.user.findFirst({
+    where: { role: "SUPER_ADMIN" },
+  });
+
+  if (superAdmin?.email !== SUPER_ADMIN_EMAIL) {
+    throw new Error(
+      `超级管理员邮箱异常：期望 ${SUPER_ADMIN_EMAIL}，实际 ${superAdmin?.email}`
+    );
+  }
+
+  console.log(`✅ 超级管理员唯一性验证通过\n`);
+}
+
 async function main() {
   console.log("🍺 开始初始化酒馆数据...\n");
 
-  // 1. 创建管理员用户
+  // 1. 确保超级管理员存在且唯一
+  await ensureSuperAdmin();
+
+  // 2. 创建管理员用户（降级为 ADMIN）
   const adminPassword = await bcrypt.hash("admin123", 12);
-  const admin = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "admin@jiuguan.com" },
-    update: {},
+    update: { role: "ADMIN" },
     create: {
       email: "admin@jiuguan.com",
       username: "admin",
@@ -18,17 +114,17 @@ async function main() {
       role: "ADMIN",
       profile: {
         create: {
-          nickname: "酒馆掌柜",
-          bio: "酒馆的管理者，欢迎大家分享自己的故事。",
+          nickname: "酒馆管理员",
+          bio: "酒馆的日常管理者，负责内容审核与社区维护。",
         },
       },
     },
   });
   console.log(`✅ 管理员: admin@jiuguan.com / admin123`);
 
-  // 2. 创建版主用户
+  // 3. 创建版主用户
   const modPassword = await bcrypt.hash("mod123", 12);
-  const mod = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "mod@jiuguan.com" },
     update: {},
     create: {
@@ -46,7 +142,7 @@ async function main() {
   });
   console.log(`✅ 版主: mod@jiuguan.com / mod123`);
 
-  // 3. 创建普通测试用户
+  // 4. 创建普通测试用户
   const userPassword = await bcrypt.hash("user123", 12);
   const testUser = await prisma.user.upsert({
     where: { email: "user@jiuguan.com" },
@@ -66,7 +162,7 @@ async function main() {
   });
   console.log(`✅ 测试用户: user@jiuguan.com / user123`);
 
-  // 4. 创建分类
+  // 5. 创建分类
   const categories = [
     { name: "创业失败", slug: "startup", description: "创业过程中的失败经验与教训", icon: "Rocket", sortOrder: 1 },
     { name: "投资踩坑", slug: "investment", description: "投资理财中的踩坑经历", icon: "TrendingDown", sortOrder: 2 },
@@ -87,7 +183,7 @@ async function main() {
   }
   console.log(`✅ 已创建 ${categories.length} 个分类`);
 
-  // 5. 创建标签
+  // 6. 创建标签
   const tags = [
     "盲目扩张", "缺乏调研", "合伙人纠纷", "现金流断裂", "技术债务",
     "过度自信", "忽视用户反馈", "时机错误", "资源浪费", "沟通失败",
@@ -108,7 +204,7 @@ async function main() {
   }
   console.log(`✅ 已创建 ${tags.length} 个标签`);
 
-  // 6. 创建示例案例
+  // 7. 创建示例案例
   const startupCat = await prisma.category.findUnique({ where: { slug: "startup" } });
   const investCat = await prisma.category.findUnique({ where: { slug: "investment" } });
   const careerCat = await prisma.category.findUnique({ where: { slug: "career" } });
@@ -194,7 +290,6 @@ async function main() {
       const existing = await prisma.failureCase.findUnique({ where: { slug: caseData.slug } });
       if (!existing) {
         const created = await prisma.failureCase.create({ data: caseData });
-        // Add tags
         const tagsToAdd = allTags.slice(0, 3);
         for (const tag of tagsToAdd) {
           await prisma.failureCaseTag.create({
@@ -208,9 +303,10 @@ async function main() {
 
   console.log("\n🎉 酒馆数据初始化完成！");
   console.log("\n📋 账号信息：");
-  console.log("  管理员: admin@jiuguan.com / admin123");
-  console.log("  版主:   mod@jiuguan.com / mod123");
-  console.log("  用户:   user@jiuguan.com / user123");
+  console.log("  超级管理员: hpulse001@gmail.com / 123456");
+  console.log("  管理员:     admin@jiuguan.com / admin123");
+  console.log("  版主:       mod@jiuguan.com / mod123");
+  console.log("  用户:       user@jiuguan.com / user123");
 }
 
 main()

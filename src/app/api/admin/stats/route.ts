@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { apiRequireAdminAccess, isAuthError } from "@/lib/api-auth";
 
 export async function GET() {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return NextResponse.json({ error: "权限不足" }, { status: 403 });
-    }
+    const result = await apiRequireAdminAccess();
+    if (isAuthError(result)) return result;
 
     const now = new Date();
     const sevenDaysAgo = new Date(now);
@@ -26,9 +21,11 @@ export async function GET() {
       totalComments,
       totalBookmarks,
       pendingReports,
+      bannedUsers,
       topCategories,
       topTags,
       recentCases,
+      roleDistribution,
     ] = await Promise.all([
       db.user.count(),
       db.failureCase.count(),
@@ -38,6 +35,7 @@ export async function GET() {
       db.comment.count(),
       db.bookmark.count(),
       db.report.count({ where: { status: "PENDING" } }),
+      db.user.count({ where: { isBanned: true } }),
       db.category.findMany({
         take: 5,
         orderBy: { cases: { _count: "desc" } },
@@ -53,9 +51,12 @@ export async function GET() {
         where: { createdAt: { gte: sevenDaysAgo } },
         select: { createdAt: true },
       }),
+      db.user.groupBy({
+        by: ["role"],
+        _count: { role: true },
+      }),
     ]);
 
-    // Fetch tag details for topTags
     const tagIds = topTags.map((t) => t.tagId);
     const tags = await db.tag.findMany({
       where: { id: { in: tagIds } },
@@ -67,7 +68,6 @@ export async function GET() {
       caseCount: t._count.tagId,
     }));
 
-    // Build 7-day trend
     const trend: { date: string; count: number }[] = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(sevenDaysAgo);
@@ -90,6 +90,7 @@ export async function GET() {
         totalComments,
         totalBookmarks,
         pendingReports,
+        bannedUsers,
       },
       topCategories: topCategories.map((c) => ({
         id: c.id,
@@ -99,12 +100,13 @@ export async function GET() {
       })),
       topTags: topTagsFormatted,
       caseTrend: trend,
+      roleDistribution: roleDistribution.map((r) => ({
+        role: r.role,
+        count: r._count.role,
+      })),
     });
   } catch (error) {
     console.error("Failed to fetch admin stats:", error);
-    return NextResponse.json(
-      { error: "获取统计数据失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "获取统计数据失败" }, { status: 500 });
   }
 }
