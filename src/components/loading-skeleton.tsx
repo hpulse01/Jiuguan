@@ -32,9 +32,21 @@ export function CaseCardSkeleton({ className }: CaseCardSkeletonProps) {
         <Skeleton className="h-4 w-5/6" />
       </div>
 
+      {/* Cost & Warning indicators */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-3 w-3 rounded-sm" />
+          <Skeleton className="h-3 w-24" />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-3 w-3 rounded-sm" />
+          <Skeleton className="h-3 w-40" />
+        </div>
+      </div>
+
       {/* Author and time */}
       <div className="flex items-center gap-2">
-        <Skeleton className="h-6 w-6 rounded-full" />
+        <Skeleton className="h-5 w-5 rounded-full" />
         <Skeleton className="h-3 w-16" />
         <Skeleton className="h-3 w-20" />
       </div>

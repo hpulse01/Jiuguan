@@ -84,8 +84,8 @@ export default function MyDraftsPage() {
         {drafts.length === 0 ? (
           <EmptyState
             icon={FileEdit}
-            title="暂无草稿"
-            description="你还没有保存任何草稿"
+            title="还没开始写"
+            description="有些故事需要勇气才能开口，没关系，先存个草稿"
           />
         ) : (
           <div className="space-y-3">

@@ -95,6 +95,17 @@ export async function GET(request: NextRequest) {
         ? { id: c.author.id, username: "匿名用户", profile: { nickname: "匿名用户", avatar: null } }
         : c.author,
       tags: c.tags.map((t) => t.tag),
+      costSummary: [
+        c.costTime && "时间",
+        c.costMoney && "金钱",
+        c.costRelationship && "关系",
+        c.costOpportunity && "机会",
+      ].filter(Boolean),
+      earliestWarningPreview: c.earliestWarning
+        ? c.earliestWarning.length > 60
+          ? c.earliestWarning.slice(0, 60) + "..."
+          : c.earliestWarning
+        : null,
     }));
 
     return NextResponse.json({

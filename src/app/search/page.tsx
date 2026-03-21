@@ -321,13 +321,14 @@ function SearchPage() {
           </div>
         ) : (
           <EmptyState
-            title="没有找到相关案例"
+            icon={Search}
+            title="这条路还没人走过"
             description={
               query
-                ? `没有找到与"${query}"相关的案例，试试其他关键词或调整筛选条件`
+                ? `没有找到关于"${query}"的前车之鉴，换个关键词试试？`
                 : selectedTagIds.length > 0
-                  ? "没有找到同时包含这些标签的案例，试试减少标签"
-                  : "暂无案例"
+                  ? "这个标签组合还没有故事，试试减少标签范围"
+                  : "酒馆里暂时没有故事，但不会太久"
             }
           />
         )}

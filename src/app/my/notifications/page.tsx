@@ -98,7 +98,7 @@ export default function NotificationsPage() {
           <div>
             <h1 className="text-2xl font-bold text-stone-100">通知</h1>
             <p className="text-sm text-stone-500 mt-1">
-              {unreadCount > 0 ? `${unreadCount} 条未读通知` : "暂无未读通知"}
+              {unreadCount > 0 ? `${unreadCount} 条新消息` : "没有未读消息"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -122,8 +122,8 @@ export default function NotificationsPage() {
         {notifications.length === 0 ? (
           <EmptyState
             icon={Bell}
-            title="暂无通知"
-            description={showUnread ? "没有未读通知" : "暂时没有任何通知"}
+            title="安静的夜晚"
+            description={showUnread ? "没有未读消息，安心喝酒" : "还没有人找过你，但故事总会来的"}
           />
         ) : (
           <div className="space-y-2">
