@@ -306,12 +306,50 @@ async function main() {
     console.log(`✅ 已创建 ${sampleCases.length} 个示例案例`);
   }
 
+  // 初始化全文搜索向量
+  try {
+    await prisma.$executeRawUnsafe(`
+      UPDATE "FailureCase" SET
+        "searchVector" =
+          setweight(to_tsvector('simple', COALESCE(title, '')), 'A') ||
+          setweight(to_tsvector('simple', COALESCE(summary, '')), 'A') ||
+          setweight(to_tsvector('simple', COALESCE(background, '')), 'B') ||
+          setweight(to_tsvector('simple', COALESCE("rootCause", '')), 'B') ||
+          setweight(to_tsvector('simple', COALESCE("adviceToOthers", '')), 'B') ||
+          setweight(to_tsvector('simple', COALESCE("earliestWarning", '')), 'C') ||
+          setweight(to_tsvector('simple', COALESCE(outcome, '')), 'C') ||
+          setweight(to_tsvector('simple', COALESCE("originalGoal", '')), 'C') ||
+          setweight(to_tsvector('simple', COALESCE("decisionPoint", '')), 'C') ||
+          setweight(to_tsvector('simple', COALESCE("actionsTaken", '')), 'D') ||
+          setweight(to_tsvector('simple', COALESCE("ignoredSignals", '')), 'D') ||
+          setweight(to_tsvector('simple', COALESCE("whatWouldDoDifferently", '')), 'D')
+      WHERE "searchVector" IS NULL
+    `);
+    console.log("✅ 全文搜索向量已初始化");
+  } catch {
+    console.log("⚠️ 全文搜索向量初始化跳过（searchVector 列可能不存在，请运行 prisma/migrations/add_search_vector.sql）");
+  }
+
   console.log("\n🎉 酒馆数据初始化完成！");
   console.log("\n📋 账号信息：");
   console.log("  超级管理员: hpulse001@gmail.com / 123456");
   console.log("  管理员:     admin@jiuguan.com / admin123");
   console.log("  版主:       mod@jiuguan.com / mod123");
   console.log("  用户:       user@jiuguan.com / user123");
+
+  if (process.env.NODE_ENV === "production") {
+    console.log("\n" + "=".repeat(60));
+    console.log("⚠️  生产环境安全警告 ⚠️");
+    console.log("=".repeat(60));
+    console.log("以上所有账号使用的是默认弱密码，仅用于开发测试！");
+    console.log("请立即登录后台修改以下账号的密码：");
+    console.log("  1. hpulse001@gmail.com（超级管理员，密码：123456）");
+    console.log("  2. admin@jiuguan.com（管理员，密码：admin123）");
+    console.log("  3. mod@jiuguan.com（版主，密码：mod123）");
+    console.log("  4. user@jiuguan.com（测试用户，密码：user123）");
+    console.log("建议：如无需测试账号，直接在数据库中删除 2-4 号账号。");
+    console.log("=".repeat(60) + "\n");
+  }
 }
 
 main()

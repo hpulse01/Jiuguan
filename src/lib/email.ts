@@ -41,6 +41,10 @@ function wrapHtml(title: string, body: string): string {
 
 /** 发送邮箱验证邮件 */
 export async function sendVerificationEmail(email: string, token: string): Promise<void> {
+  if (!isEmailConfigured()) {
+    console.log(`[Email] SMTP 未配置，跳过发送验证邮件到 ${email}`);
+    return;
+  }
   const verifyUrl = `${APP_URL}/verify-email?token=${token}`;
   const html = wrapHtml(
     "验证你的邮箱",
@@ -66,6 +70,10 @@ export async function sendVerificationEmail(email: string, token: string): Promi
 
 /** 发送密码重置邮件 */
 export async function sendPasswordResetEmail(email: string, token: string): Promise<void> {
+  if (!isEmailConfigured()) {
+    console.log(`[Email] SMTP 未配置，跳过发送密码重置邮件到 ${email}`);
+    return;
+  }
   const resetUrl = `${APP_URL}/reset-password?token=${token}`;
   const html = wrapHtml(
     "重置密码",
@@ -98,6 +106,9 @@ export async function sendNotificationEmail(
   actionUrl?: string,
   actionText?: string
 ): Promise<void> {
+  if (!isEmailConfigured()) {
+    return;
+  }
   const actionHtml = actionUrl
     ? `<div style="text-align:center;margin:24px 0;">
         <a href="${APP_URL}${actionUrl}" style="display:inline-block;background:#f59e0b;color:#0f0d0a;padding:10px 24px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:14px;">${actionText || "查看详情"}</a>

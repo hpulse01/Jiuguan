@@ -145,6 +145,7 @@ model FailureCase {
   coverImage               String?
   viewCount                Int        @default(0)
   isFeatured               Boolean    @default(false)
+  searchVector             Unsupported("tsvector")?
   createdAt                DateTime   @default(now())
   updatedAt                DateTime   @updatedAt
   publishedAt              DateTime?
