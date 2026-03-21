@@ -170,7 +170,7 @@ export default async function CaseDetailPage({
   }
 
   const similarCases = await getSimilarCases(
-    failureCase.categoryId,
+    failureCase.categoryId || "",
     failureCase.id
   );
 
@@ -251,7 +251,7 @@ export default async function CaseDetailPage({
           {/* Meta info */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             <Badge variant="default" className="text-sm">
-              {failureCase.category.name}
+              {failureCase.category?.name}
             </Badge>
             {failureCase.tags.map((t) => (
               <Badge key={t.tag.id} variant="secondary" className="text-sm">
@@ -424,7 +424,7 @@ export default async function CaseDetailPage({
                   同类案例 · 别人也在这里摔过
                 </h2>
                 <Link
-                  href={`/cases?category=${failureCase.category.slug}`}
+                  href={`/cases?category=${failureCase.category?.slug}`}
                   className="text-sm text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-colors"
                 >
                   查看更多
@@ -438,7 +438,7 @@ export default async function CaseDetailPage({
                     slug={c.slug}
                     title={c.title}
                     summary={c.summary}
-                    categoryName={c.category.name}
+                    categoryName={c.category?.name ?? ""}
                     tags={c.tags.map((t) => t.tag.name)}
                     authorName={
                       c.isAnonymous

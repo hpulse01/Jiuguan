@@ -156,7 +156,7 @@ export default async function TagPage({ params, searchParams }: PageProps) {
                 slug={c.slug}
                 title={c.title}
                 summary={c.summary}
-                categoryName={c.category.name}
+                categoryName={c.category?.name ?? ""}
                 tags={c.tags.map((t) => t.tag.name)}
                 authorName={
                   c.isAnonymous

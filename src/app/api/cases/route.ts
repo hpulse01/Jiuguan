@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { failureCaseSchema, draftCaseSchema } from "@/lib/validations";
+import { safeAuthorSelect } from "@/lib/query-helpers";
 import { nanoid } from "nanoid";
 import slugify from "slugify";
 
@@ -66,9 +67,7 @@ export async function GET(request: NextRequest) {
         take: pageSize,
         include: {
           author: {
-            include: {
-              profile: true,
-            },
+            select: safeAuthorSelect,
           },
           category: true,
           tags: {
@@ -152,40 +151,55 @@ export async function POST(request: NextRequest) {
     const baseSlug = slugify(caseData.title, { lower: true, strict: true }) || "case";
     const slug = `${baseSlug}-${nanoid(8)}`;
 
-    const newCase = await db.failureCase.create({
-      data: {
-        ...caseData,
-        slug,
-        status: status === "PUBLISHED" ? "PENDING" : status,
-        authorId: session.user.id,
-        categoryId: caseData.categoryId || "",
-        summary: caseData.summary || "",
-        background: caseData.background || "",
-        originalGoal: caseData.originalGoal || "",
-        decisionPoint: caseData.decisionPoint || "",
-        actionsTaken: caseData.actionsTaken || "",
-        ignoredSignals: caseData.ignoredSignals || "",
-        earliestWarning: caseData.earliestWarning || "",
-        outcome: caseData.outcome || "",
-        rootCause: caseData.rootCause || "",
-        whatWouldDoDifferently: caseData.whatWouldDoDifferently || "",
-        adviceToOthers: caseData.adviceToOthers || "",
-        tags: tagIds && tagIds.length > 0
-          ? {
-              create: tagIds.map((tagId: string) => ({
-                tagId,
-              })),
-            }
-          : undefined,
-      },
+    const createData: Parameters<typeof db.failureCase.create>[0]["data"] = {
+      slug,
+      title: caseData.title,
+      status: status === "PUBLISHED" ? "PENDING" : status,
+      author: { connect: { id: session.user.id } },
+      summary: caseData.summary || "",
+      background: caseData.background || "",
+      originalGoal: caseData.originalGoal || "",
+      decisionPoint: caseData.decisionPoint || "",
+      actionsTaken: caseData.actionsTaken || "",
+      ignoredSignals: caseData.ignoredSignals || "",
+      earliestWarning: caseData.earliestWarning || "",
+      outcome: caseData.outcome || "",
+      rootCause: caseData.rootCause || "",
+      whatWouldDoDifferently: caseData.whatWouldDoDifferently || "",
+      adviceToOthers: caseData.adviceToOthers || "",
+      isAnonymous: caseData.isAnonymous || false,
+      scene: caseData.scene || null,
+      costTime: caseData.costTime || null,
+      costMoney: caseData.costMoney || null,
+      costRelationship: caseData.costRelationship || null,
+      costOpportunity: caseData.costOpportunity || null,
+      coverImage: caseData.coverImage || null,
+      tags: tagIds && tagIds.length > 0
+        ? {
+            create: tagIds.map((tagId: string) => ({
+              tagId,
+            })),
+          }
+        : undefined,
+    };
+
+    if (caseData.categoryId) {
+      createData.category = { connect: { id: caseData.categoryId } };
+    }
+
+    const newCase = await db.failureCase.create({ data: createData });
+
+    // Fetch the created case with safe author select
+    const createdCase = await db.failureCase.findUnique({
+      where: { id: newCase.id },
       include: {
-        author: { include: { profile: true } },
+        author: { select: safeAuthorSelect },
         category: true,
         tags: { include: { tag: true } },
       },
     });
 
-    return NextResponse.json(newCase, { status: 201 });
+    return NextResponse.json(createdCase, { status: 201 });
   } catch (error) {
     console.error("Failed to create case:", error);
     return NextResponse.json(

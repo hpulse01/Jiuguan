@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { apiRequireAdminAccess, isAuthError } from "@/lib/api-auth";
+import { safeAuthorSelect } from "@/lib/query-helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
         take: pageSize,
         include: {
           author: {
-            include: { profile: true },
+            select: safeAuthorSelect,
           },
           category: true,
           _count: {

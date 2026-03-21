@@ -150,10 +150,10 @@ model FailureCase {
   publishedAt              DateTime?
 
   authorId   String
-  categoryId String
+  categoryId String?
 
   author   User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  category Category @relation(fields: [categoryId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
 
   tags           FailureCaseTag[]
   comments       Comment[]

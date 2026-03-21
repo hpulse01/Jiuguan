@@ -243,7 +243,7 @@ export default async function UserProfilePage({ params }: PageProps) {
                     <CardHeader className="pb-3">
                       <div className="flex items-center gap-2 mb-2">
                         <Badge variant="default" className="text-xs">
-                          {c.category.name}
+                          {c.category?.name}
                         </Badge>
                         {c.tags.slice(0, 2).map((t) => (
                           <Badge
