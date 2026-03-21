@@ -127,7 +127,7 @@ export default function MyCasesPage() {
         </div>
 
         {cases.length === 0 ? (
-          <EmptyState title="暂无案例" description="你还没有创建任何案例" />
+          <EmptyState title="你的故事还没开讲" description="每段弯路都值得被记录，坐下来说说你踩过的坑" />
         ) : (
           <div className="space-y-3">
             {cases.map((c) => {

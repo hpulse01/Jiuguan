@@ -250,8 +250,8 @@ export default async function HomePage() {
           </div>
         ) : (
           <EmptyState
-            title="还没有推荐案例"
-            description="酒馆刚刚开张，精彩的故事即将到来"
+            title="推荐位虚位以待"
+            description="好的失败故事值得被看见，酒馆正在等待那个开口的人"
           />
         )}
       </section>
@@ -299,8 +299,8 @@ export default async function HomePage() {
           </div>
         ) : (
           <EmptyState
-            title="这里还没有故事..."
-            description="酒馆今夜很安静，成为第一个分享经历的人吧"
+            title="今夜的酒馆还很安静"
+            description="每段弯路都值得被记录，坐下来，倒一杯，说说你的故事"
           />
         )}
       </section>

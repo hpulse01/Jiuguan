@@ -280,7 +280,7 @@ export function CaseInteractions({
             有用 {counts.useful > 0 && counts.useful}
           </Button>
         </TooltipTrigger>
-        <TooltipContent>这个案例对我有帮助</TooltipContent>
+        <TooltipContent>这段经历让我少走弯路</TooltipContent>
       </Tooltip>
 
       {/* Resonance */}
@@ -304,10 +304,10 @@ export function CaseInteractions({
                 className={`h-4 w-4 mr-2 ${userState.hasVotedResonance ? "fill-current" : ""}`}
               />
             )}
-            我也踩过 {counts.resonance > 0 && counts.resonance}
+            我也踩过这个坑 {counts.resonance > 0 && counts.resonance}
           </Button>
         </TooltipTrigger>
-        <TooltipContent>我也有过类似的经历</TooltipContent>
+        <TooltipContent>感同身受，我也经历过</TooltipContent>
       </Tooltip>
 
       {/* Bookmark */}
@@ -334,7 +334,7 @@ export function CaseInteractions({
             收藏 {counts.bookmarks > 0 && counts.bookmarks}
           </Button>
         </TooltipTrigger>
-        <TooltipContent>收藏此案例</TooltipContent>
+        <TooltipContent>存起来，下次做决定前看看</TooltipContent>
       </Tooltip>
 
       {/* Share */}

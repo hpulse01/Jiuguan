@@ -228,8 +228,8 @@ export default async function UserProfilePage({ params }: PageProps) {
 
           {user.cases.length === 0 ? (
             <EmptyState
-              title="还没有发布案例"
-              description="这位用户还没有分享过任何失败案例"
+              title="这位酒客还没开口"
+              description="有些人习惯先听别人的故事，也许下次就轮到TA了"
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

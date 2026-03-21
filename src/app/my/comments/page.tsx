@@ -64,8 +64,8 @@ export default function MyCommentsPage() {
         {comments.length === 0 ? (
           <EmptyState
             icon={MessageSquare}
-            title="暂无评论"
-            description="你还没有发表过评论"
+            title="还没搭过话"
+            description="别人的故事里也许藏着你的影子，说两句吧"
           />
         ) : (
           <div className="space-y-3">

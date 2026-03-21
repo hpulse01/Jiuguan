@@ -70,8 +70,8 @@ export default function MyBookmarksPage() {
         {bookmarks.length === 0 ? (
           <EmptyState
             icon={Bookmark}
-            title="暂无收藏"
-            description="你还没有收藏任何案例"
+            title="酒杯还空着"
+            description="遇到值得记住的教训，收藏起来，下次做决定前翻翻看"
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
