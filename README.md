@@ -259,12 +259,38 @@ prisma/
 
 ## 生产部署
 
-### 使用 Docker
+### 使用 Docker（推荐）
 
 ```bash
-docker-compose up -d   # 启动 PostgreSQL
-npm run db:push        # 初始化数据库
-npm run db:seed        # 填充种子数据（创建超级管理员）
+# 1. 创建 .env.production 文件
+cat > .env.production << 'EOF'
+POSTGRES_PASSWORD=<使用 openssl rand -base64 32 生成>
+NEXTAUTH_SECRET=<使用 openssl rand -base64 32 生成>
+NEXTAUTH_URL=https://your-domain.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM=酒馆 <noreply@your-domain.com>
+EOF
+
+# 2. 启动所有服务（应用 + 数据库 + 自动备份）
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+# 3. 初始化数据库
+docker compose -f docker-compose.prod.yml exec app npx prisma db push
+docker compose -f docker-compose.prod.yml exec app npx prisma db seed
+```
+
+生产部署包含：
+- **健康检查**: `GET /api/health` — 返回应用和数据库状态
+- **自动备份**: 每天凌晨3点自动备份数据库，保留最近30天
+- **日志轮转**: JSON 格式日志，单文件最大10MB，最多保留5个文件
+- **自动重启**: 服务异常时自动重启
+
+### 手动部署
+
+```bash
 npm run build          # 构建
 npm run start          # 启动
 ```
@@ -276,10 +302,37 @@ npm run start          # 启动
 - `DATABASE_URL`: 使用生产数据库地址
 - `NEXTAUTH_URL`: 设置为实际域名
 
-**重要安全提醒**：
-- 生产环境部署后，必须立即修改超级管理员 `hpulse001@gmail.com` 的密码（默认密码仅用于开发/测试）
-- 所有测试账号密码（admin123, mod123, user123）都必须在生产环境中修改
-- 请勿在客户端代码中硬编码任何密码
+### ⚠️ 生产安全检查清单
+
+部署到生产环境前，**必须**完成以下安全检查：
+
+1. **修改所有默认密码**
+   - 超级管理员 `hpulse001@gmail.com` 的密码（seed 默认为 `123456`，**极度不安全**）
+   - 管理员 `admin@jiuguan.com`（默认 `admin123`）
+   - 版主 `mod@jiuguan.com`（默认 `mod123`）
+   - 测试用户 `user@jiuguan.com`（默认 `user123`）
+   - 如无需测试账号，**建议直接删除非超级管理员的 seed 账号**
+
+2. **修改数据库密码**
+   - Docker Compose 默认密码为 `postgres`，必须替换为强密码
+   - 使用 `openssl rand -base64 32` 生成
+
+3. **生成新的 NEXTAUTH_SECRET**
+   - 使用 `openssl rand -base64 32` 生成，**不要使用默认值**
+
+4. **配置 HTTPS**
+   - 使用反向代理（Nginx/Caddy）配置 SSL 证书
+   - 确保 `NEXTAUTH_URL` 使用 `https://` 协议
+
+5. **数据库安全**
+   - 不要将 PostgreSQL 5432 端口暴露到公网
+   - 配置防火墙仅允许应用服务器访问数据库
+   - 定期验证自动备份是否正常运行
+
+6. **监控与告警**
+   - 定期检查 `/api/health` 端点
+   - 配置日志收集（可对接 ELK、Loki 等）
+   - 监控磁盘空间（备份文件和日志增长）
 
 ## 许可证
 

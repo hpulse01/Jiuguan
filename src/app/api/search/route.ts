@@ -18,51 +18,46 @@ export async function GET(request: NextRequest) {
       status: "PUBLISHED",
     };
 
-    // 尝试使用全文搜索，失败则回退到 LIKE
-    let useFullTextSearch = false;
-    let fullTextIds: string[] = [];
-
     if (q.trim()) {
+      // 双重搜索策略：全文索引（精确排序）+ LIKE（中文模糊兜底）
+      let fullTextIds: string[] = [];
       try {
-        // 尝试 PostgreSQL 全文搜索
         const searchTerms = q.trim().split(/\s+/).map(t => t.replace(/[&|!():*]/g, '')).filter(Boolean);
         if (searchTerms.length > 0) {
           const tsQuery = searchTerms.join(" & ");
-          const results = await db.$queryRawUnsafe<{ id: string; rank: number }[]>(
-            `SELECT id, ts_rank("searchVector", to_tsquery('simple', $1)) as rank
-             FROM "FailureCase"
+          const results = await db.$queryRawUnsafe<{ id: string }[]>(
+            `SELECT id FROM "FailureCase"
              WHERE "searchVector" @@ to_tsquery('simple', $1) AND status = 'PUBLISHED'
-             ORDER BY rank DESC`,
+             ORDER BY ts_rank("searchVector", to_tsquery('simple', $1)) DESC
+             LIMIT 200`,
             tsQuery
           );
           fullTextIds = results.map(r => r.id);
-          useFullTextSearch = true;
         }
       } catch {
-        // 全文搜索不可用（searchVector 列不存在），回退到 LIKE
-        useFullTextSearch = false;
+        // searchVector 列不可用，仅使用 LIKE
       }
 
-      if (useFullTextSearch) {
-        if (fullTextIds.length === 0) {
-          return NextResponse.json({
-            cases: [],
-            pagination: { page, pageSize, total: 0, totalPages: 0 },
-          });
-        }
-        where.id = { in: fullTextIds };
-      } else {
-        // 回退：LIKE 搜索
+      // 同时使用 LIKE 搜索覆盖中文部分匹配（全文索引对中文分词有限）
+      const likeConditions: Prisma.FailureCaseWhereInput[] = [
+        { title: { contains: q, mode: "insensitive" } },
+        { summary: { contains: q, mode: "insensitive" } },
+        { background: { contains: q, mode: "insensitive" } },
+        { rootCause: { contains: q, mode: "insensitive" } },
+        { adviceToOthers: { contains: q, mode: "insensitive" } },
+        { earliestWarning: { contains: q, mode: "insensitive" } },
+        { outcome: { contains: q, mode: "insensitive" } },
+        { tags: { some: { tag: { name: { contains: q, mode: "insensitive" } } } } },
+      ];
+
+      if (fullTextIds.length > 0) {
+        // 合并：全文索引命中 OR LIKE 命中
         where.OR = [
-          { title: { contains: q, mode: "insensitive" } },
-          { summary: { contains: q, mode: "insensitive" } },
-          { background: { contains: q, mode: "insensitive" } },
-          { rootCause: { contains: q, mode: "insensitive" } },
-          { adviceToOthers: { contains: q, mode: "insensitive" } },
-          { earliestWarning: { contains: q, mode: "insensitive" } },
-          { outcome: { contains: q, mode: "insensitive" } },
-          { tags: { some: { tag: { name: { contains: q, mode: "insensitive" } } } } },
+          { id: { in: fullTextIds } },
+          ...likeConditions,
         ];
+      } else {
+        where.OR = likeConditions;
       }
     }
 
