@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { apiRequireAdminAccess, isAuthError, logSensitiveAction } from "@/lib/api-auth";
 
 function generateSlug(name: string): string {
   return name
@@ -15,23 +15,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return NextResponse.json({ error: "权限不足" }, { status: 403 });
-    }
+    const result = await apiRequireAdminAccess();
+    if (isAuthError(result)) return result;
 
     const { id } = await params;
     const body = await request.json();
     const { name } = body as { name: string };
 
     if (!name || !name.trim()) {
-      return NextResponse.json(
-        { error: "标签名称不能为空" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "标签名称不能为空" }, { status: 400 });
     }
 
     const existing = await db.tag.findUnique({ where: { id } });
@@ -48,10 +40,7 @@ export async function PUT(
       },
     });
     if (conflict) {
-      return NextResponse.json(
-        { error: "标签名称或标识已存在" },
-        { status: 409 }
-      );
+      return NextResponse.json({ error: "标签名称或标识已存在" }, { status: 409 });
     }
 
     const tag = await db.tag.update({
@@ -59,13 +48,18 @@ export async function PUT(
       data: { name: name.trim(), slug },
     });
 
+    await logSensitiveAction(
+      result.user.id,
+      "TAG_UPDATED",
+      id,
+      "TAG",
+      `更新标签「${tag.name}」`
+    );
+
     return NextResponse.json(tag);
   } catch (error) {
     console.error("Failed to update tag:", error);
-    return NextResponse.json(
-      { error: "更新标签失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "更新标签失败" }, { status: 500 });
   }
 }
 
@@ -74,13 +68,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return NextResponse.json({ error: "权限不足" }, { status: 403 });
-    }
+    const result = await apiRequireAdminAccess();
+    if (isAuthError(result)) return result;
 
     const { id } = await params;
 
@@ -102,12 +91,17 @@ export async function DELETE(
 
     await db.tag.delete({ where: { id } });
 
+    await logSensitiveAction(
+      result.user.id,
+      "TAG_DELETED",
+      id,
+      "TAG",
+      `删除标签「${existing.name}」`
+    );
+
     return NextResponse.json({ message: "标签已删除" });
   } catch (error) {
     console.error("Failed to delete tag:", error);
-    return NextResponse.json(
-      { error: "删除标签失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "删除标签失败" }, { status: 500 });
   }
 }

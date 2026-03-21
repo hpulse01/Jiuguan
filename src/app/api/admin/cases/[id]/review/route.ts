@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { apiRequireAdminAccess, isAuthError, logSensitiveAction } from "@/lib/api-auth";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return NextResponse.json({ error: "权限不足" }, { status: 403 });
-    }
+    const result = await apiRequireAdminAccess();
+    if (isAuthError(result)) return result;
 
     const { id } = await params;
     const body = await request.json();
@@ -26,10 +21,7 @@ export async function POST(
       );
     }
 
-    const existingCase = await db.failureCase.findUnique({
-      where: { id },
-    });
-
+    const existingCase = await db.failureCase.findUnique({ where: { id } });
     if (!existingCase) {
       return NextResponse.json({ error: "案例不存在" }, { status: 404 });
     }
@@ -64,23 +56,18 @@ export async function POST(
           link: `/cases/${existingCase.slug}`,
         },
       }),
-      db.moderationLog.create({
-        data: {
-          action: action === "approve" ? "CASE_APPROVED" : "CASE_REJECTED",
-          detail: reason || null,
-          targetId: id,
-          targetType: "CASE",
-          moderatorId: session.user.id,
-        },
-      }),
+      logSensitiveAction(
+        result.user.id,
+        action === "approve" ? "CASE_APPROVED" : "CASE_REJECTED",
+        id,
+        "CASE",
+        reason || undefined
+      ),
     ]);
 
     return NextResponse.json(updatedCase);
   } catch (error) {
     console.error("Failed to review case:", error);
-    return NextResponse.json(
-      { error: "审核案例失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "审核案例失败" }, { status: 500 });
   }
 }

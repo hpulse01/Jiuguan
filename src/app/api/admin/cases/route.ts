@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { apiRequireAdminAccess, isAuthError } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return NextResponse.json({ error: "权限不足" }, { status: 403 });
-    }
+    const result = await apiRequireAdminAccess();
+    if (isAuthError(result)) return result;
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || undefined;
@@ -53,9 +48,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Failed to fetch admin cases:", error);
-    return NextResponse.json(
-      { error: "获取案例列表失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "获取案例列表失败" }, { status: 500 });
   }
 }

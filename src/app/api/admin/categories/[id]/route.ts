@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { apiRequireAdminAccess, isAuthError, logSensitiveAction } from "@/lib/api-auth";
 
 function generateSlug(name: string): string {
   return name
@@ -15,13 +15,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return NextResponse.json({ error: "权限不足" }, { status: 403 });
-    }
+    const result = await apiRequireAdminAccess();
+    if (isAuthError(result)) return result;
 
     const { id } = await params;
     const body = await request.json();
@@ -42,7 +37,6 @@ export async function PUT(
       data.name = name.trim();
       data.slug = generateSlug(name);
 
-      // Check uniqueness
       const conflict = await db.category.findFirst({
         where: {
           OR: [{ name: data.name as string }, { slug: data.slug as string }],
@@ -50,10 +44,7 @@ export async function PUT(
         },
       });
       if (conflict) {
-        return NextResponse.json(
-          { error: "分类名称或标识已存在" },
-          { status: 409 }
-        );
+        return NextResponse.json({ error: "分类名称或标识已存在" }, { status: 409 });
       }
     }
     if (description !== undefined) data.description = description;
@@ -65,13 +56,18 @@ export async function PUT(
       data,
     });
 
+    await logSensitiveAction(
+      result.user.id,
+      "CATEGORY_UPDATED",
+      id,
+      "CATEGORY",
+      `更新分类「${category.name}」`
+    );
+
     return NextResponse.json(category);
   } catch (error) {
     console.error("Failed to update category:", error);
-    return NextResponse.json(
-      { error: "更新分类失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "更新分类失败" }, { status: 500 });
   }
 }
 
@@ -80,13 +76,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return NextResponse.json({ error: "权限不足" }, { status: 403 });
-    }
+    const result = await apiRequireAdminAccess();
+    if (isAuthError(result)) return result;
 
     const { id } = await params;
 
@@ -108,12 +99,17 @@ export async function DELETE(
 
     await db.category.delete({ where: { id } });
 
+    await logSensitiveAction(
+      result.user.id,
+      "CATEGORY_DELETED",
+      id,
+      "CATEGORY",
+      `删除分类「${existing.name}」`
+    );
+
     return NextResponse.json({ message: "分类已删除" });
   } catch (error) {
     console.error("Failed to delete category:", error);
-    return NextResponse.json(
-      { error: "删除分类失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "删除分类失败" }, { status: 500 });
   }
 }

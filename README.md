@@ -60,7 +60,7 @@ npm run db:generate
 # 推送 Schema 到数据库
 npm run db:push
 
-# 初始化种子数据（分类、标签、示例案例、管理员账号）
+# 初始化种子数据（超级管理员、分类、标签、示例案例）
 npm run db:seed
 ```
 
@@ -72,15 +72,66 @@ npm run dev
 
 访问 http://localhost:3000
 
-### 初始账号
+## 角色权限体系
+
+酒馆采用分层权限模型，共 5 个角色等级：
+
+| 等级 | 角色 | 说明 |
+|------|------|------|
+| 5 | **SUPER_ADMIN** (超级管理员) | 全系统唯一最高权限，固定为 `hpulse001@gmail.com` |
+| 4 | **ADMIN** (管理员) | 内容管理、用户管理（不含超级管理员）、分类/标签管理 |
+| 3 | **MODERATOR** (版主) | 案例审核、举报处理、基础内容管理 |
+| 2 | **USER** (用户) | 发布案例、评论、投票、收藏 |
+| 1 | **GUEST** (游客) | 只读浏览 |
+
+### 超级管理员唯一性规则
+
+- **系统中有且只有一个 SUPER_ADMIN**，固定邮箱为 `hpulse001@gmail.com`
+- 任何人（包括超级管理员自己）都不能通过接口创建第二个 SUPER_ADMIN
+- SUPER_ADMIN 不能被降级、封禁或删除
+- 所有对超级管理员的非法操作尝试都会被记录到审计日志
+- ADMIN 不能提升别人为 ADMIN（只有 SUPER_ADMIN 可以）
+- ADMIN 不能修改其他 ADMIN 的角色
+
+### 后台访问权限分层
+
+| 功能 | SUPER_ADMIN | ADMIN | MODERATOR |
+|------|:-----------:|:-----:|:---------:|
+| 仪表盘 | ✅ | ✅ | ✅ |
+| 案例管理/审核 | ✅ | ✅ | ✅ |
+| 举报管理 | ✅ | ✅ | ✅ |
+| 分类/标签管理 | ✅ | ✅ | ✅ |
+| 操作日志 | ✅ (含敏感日志) | ✅ | ✅ |
+| 用户管理 | ✅ (全部) | ✅ (不含SA) | 只读 |
+| 用户封禁/解封 | ✅ | ✅ (不含ADMIN+) | ❌ |
+| 角色升降级 | ✅ (可升至ADMIN) | ✅ (仅MODERATOR以下) | ❌ |
+| **权限管理页** | ✅ | ❌ | ❌ |
+| 敏感操作日志 | ✅ | ❌ | ❌ |
+
+## 初始账号
 
 种子数据会创建以下账号：
 
 | 角色 | 邮箱 | 密码 |
 |------|------|------|
+| **超级管理员** | hpulse001@gmail.com | 123456 |
 | 管理员 | admin@jiuguan.com | admin123 |
 | 版主 | mod@jiuguan.com | mod123 |
 | 用户 | user@jiuguan.com | user123 |
+
+### 超级管理员恢复
+
+如果超级管理员账号异常，重新运行 seed 即可修复：
+
+```bash
+npm run db:seed
+```
+
+seed 脚本会：
+1. 降级所有非 `hpulse001@gmail.com` 的 SUPER_ADMIN 为 ADMIN
+2. 创建或更新 `hpulse001@gmail.com` 为 SUPER_ADMIN
+3. 更新密码为指定值的 bcrypt 哈希
+4. 验证唯一性（若不唯一则报错中断）
 
 ## 可用脚本
 
@@ -106,13 +157,17 @@ npm run db:studio    # 打开 Prisma Studio
 - 个人资料编辑
 - 用户主页
 - 关注/粉丝
+- 用户封禁/解封
 
 ### 失败案例
 - 结构化案例发布（背景、目标、决策、行动、预警、结果、代价、根因、建议）
 - 草稿保存与继续编辑
 - 提交审核 -> 发布/驳回工作流
+- 驳回后可重新编辑提交
 - 匿名发布
 - 案例详情页（完整展示所有字段）
+- 精选案例管理
+- 内容隐藏与恢复
 
 ### 互动功能
 - "有用"投票
@@ -133,17 +188,23 @@ npm run db:studio    # 打开 Prisma Studio
 - 评论/回复通知
 - 投票/收藏通知
 - 审核结果通知
+- 举报处理结果通知
 - 关注通知
-- 全部已读
+- 全部已读/单条已读
 
 ### 管理后台
-- 仪表盘（统计数据、趋势图）
-- 案例审核（通过/驳回）
+- 仪表盘（统计数据、趋势图、角色分布）
+- 案例审核（通过/驳回/恢复）
 - 精选管理
-- 举报处理
+- 举报处理（处理/驳回/一键隐藏内容）
 - 分类/标签管理（CRUD）
-- 用户管理（角色分配）
-- 操作日志
+- 用户管理（搜索/筛选/角色管理/封禁/解封）
+- 操作日志（含敏感操作审计）
+- **权限管理**（仅超级管理员）
+  - 角色体系说明
+  - 高权限账号列表
+  - 角色分布统计
+  - 敏感操作日志
 
 ## 项目结构
 
@@ -151,7 +212,17 @@ npm run db:studio    # 打开 Prisma Studio
 src/
   app/                  # Next.js App Router 页面
     api/                # API 路由
+      admin/            # 管理后台 API
+        permissions/    # 权限管理 API (仅 SUPER_ADMIN)
+        users/          # 用户管理 API
+        cases/          # 案例管理 API
+        reports/        # 举报管理 API
+        categories/     # 分类管理 API
+        tags/           # 标签管理 API
+        stats/          # 统计 API
+        moderation-logs/# 操作日志 API
     admin/              # 管理后台页面
+      permissions/      # 权限管理页 (仅 SUPER_ADMIN)
     cases/              # 案例相关页面
     categories/         # 分类页面
     tags/               # 标签页面
@@ -162,13 +233,29 @@ src/
     layout/             # 布局组件
   lib/                  # 工具库
     auth.ts             # NextAuth 配置
+    auth-utils.ts       # 服务端认证工具函数
+    api-auth.ts         # API 路由统一权限校验
+    permissions.ts      # 集中式权限规则引擎
     db.ts               # Prisma 客户端
     validations.ts      # Zod 验证 Schema
     utils.ts            # 工具函数
 prisma/
   schema.prisma         # 数据库 Schema
-  seed.ts               # 种子数据
+  seed.ts               # 种子数据（含超级管理员初始化）
 ```
+
+## 安全特性
+
+- 密码使用 bcrypt 哈希存储
+- JWT Session 策略
+- 服务端权限校验（所有后台 API 均有服务端权限检查）
+- 集中式权限规则引擎（`src/lib/permissions.ts`）
+- 统一 API 权限校验工具（`src/lib/api-auth.ts`）
+- 超级管理员保护机制（不可降级/封禁/删除）
+- 高敏感操作审计日志
+- Rate Limiting
+- Security Headers（X-Frame-Options, CSP 等）
+- 匿名发布保护（不泄露真实身份）
 
 ## 生产部署
 
@@ -177,7 +264,7 @@ prisma/
 ```bash
 docker-compose up -d   # 启动 PostgreSQL
 npm run db:push        # 初始化数据库
-npm run db:seed        # 填充种子数据
+npm run db:seed        # 填充种子数据（创建超级管理员）
 npm run build          # 构建
 npm run start          # 启动
 ```

@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { apiRequireAdminAccess, isAuthError, logSensitiveAction } from "@/lib/api-auth";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-    if (session.user.role !== "ADMIN" && session.user.role !== "MODERATOR") {
-      return NextResponse.json({ error: "权限不足" }, { status: 403 });
-    }
+    const result = await apiRequireAdminAccess();
+    if (isAuthError(result)) return result;
 
     const { id } = await params;
     const body = await request.json();
-    const { action } = body as { action: string };
+    const { action, hideContent } = body as { action: string; hideContent?: boolean };
 
     if (action !== "resolve" && action !== "dismiss") {
       return NextResponse.json(
@@ -36,10 +31,7 @@ export async function PUT(
     }
 
     if (report.status !== "PENDING") {
-      return NextResponse.json(
-        { error: "该举报已被处理" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "该举报已被处理" }, { status: 400 });
     }
 
     const newStatus = action === "resolve" ? "RESOLVED" : "DISMISSED";
@@ -49,24 +41,40 @@ export async function PUT(
         where: { id },
         data: { status: newStatus },
       }),
-      db.moderationLog.create({
+      logSensitiveAction(
+        result.user.id,
+        action === "resolve" ? "REPORT_RESOLVED" : "REPORT_DISMISSED",
+        id,
+        "REPORT",
+        `举报「${report.reason}」已${action === "resolve" ? "处理" : "驳回"}`
+      ),
+      // 通知举报者处理结果
+      db.notification.create({
         data: {
-          action: action === "resolve" ? "REPORT_RESOLVED" : "REPORT_DISMISSED",
-          detail: `举报「${report.reason}」已${action === "resolve" ? "处理" : "驳回"}`,
-          targetId: id,
-          targetType: "REPORT",
-          moderatorId: session.user.id,
+          type: "REPORT_HANDLED",
+          message: `您对案例「${report.case.title}」的举报已${action === "resolve" ? "处理" : "驳回"}`,
+          userId: report.reporterId,
+          link: `/cases/${report.case.slug}`,
         },
       }),
     ];
 
-    // Archive the case if the report is resolved
-    if (action === "resolve") {
+    // 根据操作结果处理内容
+    if (action === "resolve" && hideContent !== false) {
       updates.push(
         db.failureCase.update({
           where: { id: report.caseId },
           data: { status: "ARCHIVED" },
         })
+      );
+      updates.push(
+        logSensitiveAction(
+          result.user.id,
+          "CONTENT_HIDDEN",
+          report.caseId,
+          "CASE",
+          `因举报处理，案例「${report.case.title}」已被隐藏`
+        )
       );
     }
 
@@ -97,9 +105,6 @@ export async function PUT(
     return NextResponse.json(updatedReport);
   } catch (error) {
     console.error("Failed to handle report:", error);
-    return NextResponse.json(
-      { error: "处理举报失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "处理举报失败" }, { status: 500 });
   }
 }

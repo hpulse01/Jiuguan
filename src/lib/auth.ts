@@ -53,6 +53,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!user) return null;
 
+        // 检查是否被封禁
+        if (user.isBanned) return null;
+
         const isValid = await bcrypt.compare(
           credentials.password as string,
           user.passwordHash
@@ -72,16 +75,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id as string;
         token.username = (user as { username: string }).username;
         token.role = (user as { role: UserRole }).role;
       }
+      // 刷新时重新读取角色，确保角色变更即时生效
+      if (trigger === "update" || !user) {
+        const dbUser = await db.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, isBanned: true },
+        });
+        if (dbUser) {
+          token.role = dbUser.role;
+          if (dbUser.isBanned) {
+            // Return empty token to force logout
+            return {} as typeof token;
+          }
+        }
+      }
       return token;
     },
     async session({ session, token }) {
-      if (token) {
+      if (token && token.id) {
         session.user.id = token.id as string;
         session.user.username = token.username as string;
         session.user.role = token.role as UserRole;

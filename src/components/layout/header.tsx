@@ -17,6 +17,7 @@ import {
   LayoutGrid,
   Home,
   ChevronDown,
+  ShieldCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -142,6 +143,14 @@ export function Header() {
                     设置
                   </Link>
                 </DropdownMenuItem>
+                {(user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "MODERATOR") && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin" className="flex cursor-pointer items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" />
+                      管理后台
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator className="bg-[var(--border)]" />
                 <DropdownMenuItem
                   className="flex cursor-pointer items-center gap-2 text-red-400 focus:text-red-400"

@@ -1,37 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { auth } from "@/lib/auth";
+import { apiRequireAdmin, isAuthError, logSensitiveAction } from "@/lib/api-auth";
+import { canChangeUserRole, SUPER_ADMIN_EMAIL } from "@/lib/permissions";
+import type { UserRole } from "@prisma/client";
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-    if (session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "只有管理员可以修改用户角色" }, { status: 403 });
-    }
+    const result = await apiRequireAdmin();
+    if (isAuthError(result)) return result;
 
     const { id } = await params;
     const body = await request.json();
     const { role } = body as { role: string };
 
     if (!role) {
-      return NextResponse.json(
-        { error: "缺少必要参数 role" },
-        { status: 400 }
-      );
-    }
-
-    const validRoles = ["GUEST", "USER", "MODERATOR", "ADMIN"];
-    if (!validRoles.includes(role)) {
-      return NextResponse.json(
-        { error: "无效的角色" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "缺少必要参数 role" }, { status: 400 });
     }
 
     const user = await db.user.findUnique({ where: { id } });
@@ -39,33 +25,50 @@ export async function PUT(
       return NextResponse.json({ error: "用户不存在" }, { status: 404 });
     }
 
-    if (id === session.user.id) {
-      return NextResponse.json(
-        { error: "不能修改自己的角色" },
-        { status: 400 }
-      );
+    if (id === result.user.id) {
+      return NextResponse.json({ error: "不能修改自己的角色" }, { status: 400 });
+    }
+
+    const check = canChangeUserRole(
+      result.user.role,
+      user.role as UserRole,
+      role as UserRole,
+      user.email
+    );
+
+    if (!check.allowed) {
+      if (user.role === "SUPER_ADMIN" || user.email === SUPER_ADMIN_EMAIL || role === "SUPER_ADMIN") {
+        await logSensitiveAction(
+          result.user.id,
+          "ILLEGAL_ROLE_CHANGE_ATTEMPT",
+          user.id,
+          "USER",
+          `尝试将 ${user.email} (${user.role}) 修改为 ${role}。拒绝原因：${check.reason}`
+        );
+      }
+      return NextResponse.json({ error: check.reason }, { status: 403 });
     }
 
     const updatedUser = await db.user.update({
       where: { id },
-      data: { role: role as "GUEST" | "USER" | "MODERATOR" | "ADMIN" },
+      data: { role: role as UserRole },
       select: {
-        id: true,
-        email: true,
-        username: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-        profile: true,
+        id: true, email: true, username: true, role: true,
+        isBanned: true, createdAt: true, updatedAt: true, profile: true,
       },
     });
+
+    await logSensitiveAction(
+      result.user.id,
+      "ROLE_CHANGED",
+      user.id,
+      "USER",
+      `将 ${user.email} 的角色从 ${user.role} 修改为 ${role}`
+    );
 
     return NextResponse.json(updatedUser);
   } catch (error) {
     console.error("Failed to update user role:", error);
-    return NextResponse.json(
-      { error: "更新用户角色失败" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "更新用户角色失败" }, { status: 500 });
   }
 }
