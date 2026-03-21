@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, Shield, ShieldCheck, User } from "lucide-react";
+import { Loader2, Shield, User } from "lucide-react";
 
 interface UserItem {
   id: string;

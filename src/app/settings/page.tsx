@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, Save, User } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();

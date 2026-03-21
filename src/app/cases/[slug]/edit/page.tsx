@@ -72,6 +72,7 @@ export default function EditCasePage({
         setCategories(Array.isArray(cats) ? cats : []);
         setTags(Array.isArray(tgs) ? tgs : []);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tagIds = caseData.tags?.map((t: any) => t.tag?.id || t.tagId) || [];
         setSelectedTags(tagIds);
 

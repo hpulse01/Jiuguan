@@ -69,7 +69,7 @@ export default function MyBookmarksPage() {
 
         {bookmarks.length === 0 ? (
           <EmptyState
-            icon={<Bookmark className="h-12 w-12 text-stone-600" />}
+            icon={Bookmark}
             title="暂无收藏"
             description="你还没有收藏任何案例"
           />

@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { registerSchema } from "@/lib/validations";
+import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get("x-forwarded-for") || "anonymous";
+    const rl = rateLimit(`register:${ip}`, { limit: 5, windowSeconds: 300 });
+    if (!rl.success) return rateLimitResponse(rl);
+
     const body = await request.json();
     const result = registerSchema.safeParse(body);
 

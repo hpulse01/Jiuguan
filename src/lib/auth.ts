@@ -82,15 +82,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id;
-        session.user.username = token.username;
-        session.user.role = token.role;
+        session.user.id = token.id as string;
+        session.user.username = token.username as string;
+        session.user.role = token.role as UserRole;
 
         const profile = await db.profile.findUnique({
-          where: { userId: token.id },
+          where: { userId: token.id as string },
         });
-        session.user.nickname = profile?.nickname;
-        session.user.avatar = profile?.avatar;
+        session.user.nickname = profile?.nickname ?? undefined;
+        session.user.avatar = profile?.avatar ?? undefined;
       }
       return session;
     },

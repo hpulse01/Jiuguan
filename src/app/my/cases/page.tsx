@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
-import { Loader2, FileText, Edit, Eye, Send, Trash2 } from "lucide-react";
+import { Loader2, Edit, Eye, Send, Trash2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 interface CaseItem {
@@ -34,7 +33,7 @@ const statusMap: Record<string, { label: string; color: string }> = {
 };
 
 export default function MyCasesPage() {
-  const { data: session, status: authStatus } = useSession();
+  const { status: authStatus } = useSession();
   const router = useRouter();
   const [cases, setCases] = useState<CaseItem[]>([]);
   const [loading, setLoading] = useState(true);

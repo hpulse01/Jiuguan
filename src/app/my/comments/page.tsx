@@ -63,7 +63,7 @@ export default function MyCommentsPage() {
 
         {comments.length === 0 ? (
           <EmptyState
-            icon={<MessageSquare className="h-12 w-12 text-stone-600" />}
+            icon={MessageSquare}
             title="暂无评论"
             description="你还没有发表过评论"
           />
