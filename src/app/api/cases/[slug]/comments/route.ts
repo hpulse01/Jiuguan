@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { commentSchema } from "@/lib/validations";
 import { createNotification } from "@/lib/notification";
+import { safeAuthorSelect } from "@/lib/query-helpers";
 
 export async function GET(
   request: NextRequest,
@@ -28,7 +29,7 @@ export async function GET(
       orderBy: { createdAt: "asc" },
       include: {
         author: {
-          include: { profile: true },
+          select: safeAuthorSelect,
         },
         _count: {
           select: { likes: true },
@@ -37,7 +38,7 @@ export async function GET(
           orderBy: { createdAt: "asc" },
           include: {
             author: {
-              include: { profile: true },
+              select: safeAuthorSelect,
             },
             _count: {
               select: { likes: true },
@@ -110,7 +111,7 @@ export async function POST(
       }
     }
 
-    const comment = await db.comment.create({
+    const newComment = await db.comment.create({
       data: {
         content,
         commentType,
@@ -119,9 +120,13 @@ export async function POST(
         caseId: failureCase.id,
         parentId: parentId || null,
       },
+    });
+
+    const comment = await db.comment.findUnique({
+      where: { id: newComment.id },
       include: {
         author: {
-          include: { profile: true },
+          select: safeAuthorSelect,
         },
         _count: {
           select: { likes: true },

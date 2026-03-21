@@ -36,6 +36,7 @@ export async function GET(
       where: {
         authorId: user.id,
         status: "PUBLISHED",
+        isAnonymous: false,
       },
       orderBy: { publishedAt: "desc" },
       include: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { failureCaseSchema, draftCaseSchema } from "@/lib/validations";
+import { safeAuthorSelect } from "@/lib/query-helpers";
 
 export async function GET(
   request: NextRequest,
@@ -14,8 +15,8 @@ export async function GET(
       where: { slug },
       include: {
         author: {
-          include: { profile: true },
-        },
+            select: safeAuthorSelect,
+          },
         category: true,
         tags: {
           include: { tag: true },
@@ -136,7 +137,7 @@ export async function PUT(
       });
     }
 
-    const updatedCase = await db.failureCase.update({
+    await db.failureCase.update({
       where: { slug },
       data: {
         ...caseData,
@@ -147,8 +148,12 @@ export async function PUT(
             }
           : undefined,
       },
+    });
+
+    const updatedCase = await db.failureCase.findUnique({
+      where: { slug },
       include: {
-        author: { include: { profile: true } },
+        author: { select: safeAuthorSelect },
         category: true,
         tags: { include: { tag: true } },
       },

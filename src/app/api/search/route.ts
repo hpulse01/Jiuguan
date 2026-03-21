@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { safeAuthorSelect } from "@/lib/query-helpers";
 import type { Prisma } from "@prisma/client";
 
 export async function GET(request: NextRequest) {
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest) {
         take: pageSize,
         include: {
           author: {
-            include: { profile: true },
+            select: safeAuthorSelect,
           },
           category: true,
           tags: {
