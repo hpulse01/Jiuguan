@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { createNotification } from "@/lib/notification";
 
 export async function POST(
   request: NextRequest,
@@ -48,13 +49,11 @@ export async function POST(
 
     // Notify case author
     if (failureCase.authorId !== session.user.id) {
-      await db.notification.create({
-        data: {
-          type: "RESONANCE",
-          message: `${session.user.nickname || session.user.username} 也踩过你在「${failureCase.title}」中描述的坑`,
-          link: `/cases/${slug}`,
-          userId: failureCase.authorId,
-        },
+      await createNotification({
+        type: "RESONANCE",
+        message: `${session.user.nickname || session.user.username} 也踩过你在「${failureCase.title}」中描述的坑`,
+        link: `/cases/${slug}`,
+        userId: failureCase.authorId,
       });
     }
 

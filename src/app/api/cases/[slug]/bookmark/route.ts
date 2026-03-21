@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { createNotification } from "@/lib/notification";
 
 export async function POST(
   request: NextRequest,
@@ -48,13 +49,11 @@ export async function POST(
 
     // Notify case author
     if (failureCase.authorId !== session.user.id) {
-      await db.notification.create({
-        data: {
-          type: "BOOKMARK",
-          message: `${session.user.nickname || session.user.username} 收藏了你的案例「${failureCase.title}」`,
-          link: `/cases/${slug}`,
-          userId: failureCase.authorId,
-        },
+      await createNotification({
+        type: "BOOKMARK",
+        message: `${session.user.nickname || session.user.username} 收藏了你的案例「${failureCase.title}」`,
+        link: `/cases/${slug}`,
+        userId: failureCase.authorId,
       });
     }
 

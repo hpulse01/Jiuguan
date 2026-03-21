@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { registerSchema } from "@/lib/validations";
 import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import { sendVerificationEmail, isEmailConfigured } from "@/lib/email";
 import bcrypt from "bcryptjs";
+import { nanoid } from "nanoid";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +24,6 @@ export async function POST(request: NextRequest) {
 
     const { email, username, password } = result.data;
 
-    // Check if email already exists
     const existingEmail = await db.user.findUnique({
       where: { email },
     });
@@ -34,7 +35,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username already exists
     const existingUsername = await db.user.findUnique({
       where: { username },
     });
@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
         email,
         username,
         passwordHash,
+        emailVerified: !isEmailConfigured(), // 未配置邮件时自动验证
         profile: {
           create: {
             nickname: username,
@@ -64,13 +65,38 @@ export async function POST(request: NextRequest) {
         email: true,
         username: true,
         role: true,
+        emailVerified: true,
         createdAt: true,
         profile: true,
       },
     });
 
+    // 发送验证邮件（如果SMTP已配置）
+    if (isEmailConfigured()) {
+      try {
+        const token = nanoid(48);
+        await db.verificationToken.create({
+          data: {
+            token,
+            email,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24小时
+          },
+        });
+        await sendVerificationEmail(email, token);
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+        // 邮件发送失败不影响注册
+      }
+    }
+
     return NextResponse.json(
-      { message: "注册成功", user },
+      {
+        message: isEmailConfigured()
+          ? "注册成功，请查收验证邮件"
+          : "注册成功",
+        user,
+        requiresVerification: isEmailConfigured(),
+      },
       { status: 201 }
     );
   } catch (error) {

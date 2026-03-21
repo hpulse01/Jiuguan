@@ -56,6 +56,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // 检查是否被封禁
         if (user.isBanned) return null;
 
+        // 检查邮箱是否已验证
+        if (!user.emailVerified) return null;
+
         const isValid = await bcrypt.compare(
           credentials.password as string,
           user.passwordHash

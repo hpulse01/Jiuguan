@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { apiRequireAdminAccess, isAuthError, logSensitiveAction } from "@/lib/api-auth";
+import { createNotification } from "@/lib/notification";
 
 export async function POST(
   request: NextRequest,
@@ -48,13 +49,11 @@ export async function POST(
           publishedAt: action === "approve" ? new Date() : undefined,
         },
       }),
-      db.notification.create({
-        data: {
-          type: notificationType,
-          message: notificationMessage,
-          userId: existingCase.authorId,
-          link: `/cases/${existingCase.slug}`,
-        },
+      createNotification({
+        type: notificationType,
+        message: notificationMessage,
+        userId: existingCase.authorId,
+        link: `/cases/${existingCase.slug}`,
       }),
       logSensitiveAction(
         result.user.id,

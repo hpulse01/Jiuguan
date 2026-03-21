@@ -10,11 +10,13 @@ import { registerSchema, type RegisterInput } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wine, Loader2 } from "lucide-react";
+import { Wine, Loader2, Mail } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   const {
     register,
@@ -41,6 +43,14 @@ export default function RegisterPage() {
         return;
       }
 
+      // 需要邮箱验证
+      if (json.requiresVerification) {
+        setRegisteredEmail(data.email);
+        setVerificationSent(true);
+        return;
+      }
+
+      // 无需验证，直接登录
       const signInResult = await signIn("credentials", {
         email: data.email,
         password: data.password,
@@ -59,6 +69,55 @@ export default function RegisterPage() {
       setError("网络错误，请稍后重试");
     }
   };
+
+  const handleResendVerification = async () => {
+    try {
+      await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registeredEmail }),
+      });
+    } catch {
+      // 静默失败
+    }
+  };
+
+  // 验证邮件已发送状态
+  if (verificationSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0f0d0a] px-4 py-12">
+        <div className="relative w-full max-w-md text-center">
+          <div className="text-center mb-8">
+            <Link href="/" className="inline-flex items-center gap-2 mb-6">
+              <Wine className="h-8 w-8 text-amber-500" />
+              <span className="text-2xl font-bold text-amber-500">酒馆</span>
+            </Link>
+          </div>
+          <div className="rounded-xl border border-stone-800 bg-stone-900/80 backdrop-blur-sm p-8 shadow-lg">
+            <Mail className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-stone-50 mb-2">查收验证邮件</h2>
+            <p className="text-stone-400 mb-2">
+              我们已向 <span className="text-amber-400">{registeredEmail}</span> 发送了验证邮件
+            </p>
+            <p className="text-stone-500 text-sm mb-6">
+              请点击邮件中的链接完成验证，然后即可登录酒馆
+            </p>
+            <div className="space-y-3">
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/login">去登录</Link>
+              </Button>
+              <button
+                onClick={handleResendVerification}
+                className="text-sm text-amber-500 hover:text-amber-400 transition-colors"
+              >
+                没收到？重新发送
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0f0d0a] px-4 py-12">
