@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #fdf8f0;
+  --foreground: #261a08;
+  --card: #fff9f0;
+  --card-foreground: #261a08;
+  --popover: #fff9f0;
+  --popover-foreground: #261a08;
+  --primary: #a06b1e;
+  --primary-foreground: #fdf8f0;
+  --secondary: #f5e6cc;
+  --secondary-foreground: #3d280c;
+  --muted: #f5e6cc;
+  --muted-foreground: #7d5318;
+  --accent: #f5e6cc;
+  --accent-foreground: #3d280c;
+  --destructive: #b91c1c;
+  --destructive-foreground: #fdf8f0;
+  --border: #e8c896;
+  --input: #e8c896;
+  --ring: #a06b1e;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: #0f0d0a;
+  --foreground: #f5e6cc;
+  --card: #1a1510;
+  --card-foreground: #f5e6cc;
+  --popover: #1a1510;
+  --popover-foreground: #f5e6cc;
+  --primary: #d4a054;
+  --primary-foreground: #140d04;
+  --secondary: #261a08;
+  --secondary-foreground: #f5e6cc;
+  --muted: #1f1912;
+  --muted-foreground: #a08a6e;
+  --accent: #2a2015;
+  --accent-foreground: #f5e6cc;
+  --destructive: #dc2626;
+  --destructive-foreground: #fdf8f0;
+  --border: #2e2318;
+  --input: #2e2318;
+  --ring: #d4a054;
+}
+
+@layer base {
+  * {
+    @apply border-[var(--border)];
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)] antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+
+  a {
+    @apply transition-colors duration-200;
+  }
+}
+
+@layer components {
+  .tavern-card {
+    @apply rounded-lg border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm;
+    @apply transition-all duration-200 ease-in-out;
+    @apply hover:shadow-md hover:border-tavern-600;
+  }
+
+  .tavern-glow {
+    box-shadow: 0 0 20px rgba(212, 160, 84, 0.08),
+                0 0 40px rgba(212, 160, 84, 0.04);
+  }
+
+  .tavern-input {
+    @apply rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm;
+    @apply placeholder:text-[var(--muted-foreground)];
+    @apply focus:outline-none focus:ring-2 focus:ring-[var(--ring)] focus:ring-offset-2 focus:ring-offset-[var(--background)];
+    @apply transition-all duration-200;
+  }
+
+  .tavern-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply bg-tavern-800 text-tavern-200 border border-tavern-700;
+    @apply transition-colors duration-200 hover:bg-tavern-700;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--background);
+}
+
+/* Selection */
+::selection {
+  background: rgba(212, 160, 84, 0.3);
+  color: #fdf8f0;
+}
+
+/* Focus visible */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Backdrop blur utility for header */
+.backdrop-blur-tavern {
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
