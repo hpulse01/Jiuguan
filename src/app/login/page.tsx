@@ -34,7 +34,7 @@ export default function LoginPage() {
     });
 
     if (result?.error) {
-      setError("邮箱或密码错误，请重试");
+      setError("邮箱或密码错误，或邮箱尚未验证");
       return;
     }
 
@@ -85,7 +85,15 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">密码</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">密码</Label>
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-amber-500 hover:text-amber-400 transition-colors"
+                >
+                  忘记密码？
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"

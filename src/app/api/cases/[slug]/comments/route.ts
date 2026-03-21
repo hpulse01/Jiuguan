@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { commentSchema } from "@/lib/validations";
+import { createNotification } from "@/lib/notification";
 
 export async function GET(
   request: NextRequest,
@@ -131,15 +132,13 @@ export async function POST(
     // Create notification for case author (if commenter is not the author)
     if (failureCase.authorId !== session.user.id) {
       const notificationType = parentId ? "REPLY" : "COMMENT";
-      await db.notification.create({
-        data: {
-          type: notificationType,
-          message: parentId
-            ? `${session.user.nickname || session.user.username} 回复了你在「${failureCase.title}」的评论`
-            : `${session.user.nickname || session.user.username} 评论了你的案例「${failureCase.title}」`,
-          link: `/cases/${slug}`,
-          userId: failureCase.authorId,
-        },
+      await createNotification({
+        type: notificationType,
+        message: parentId
+          ? `${session.user.nickname || session.user.username} 回复了你在「${failureCase.title}」的评论`
+          : `${session.user.nickname || session.user.username} 评论了你的案例「${failureCase.title}」`,
+        link: `/cases/${slug}`,
+        userId: failureCase.authorId,
       });
     }
 
@@ -150,13 +149,11 @@ export async function POST(
         select: { authorId: true },
       });
       if (parentComment && parentComment.authorId !== session.user.id && parentComment.authorId !== failureCase.authorId) {
-        await db.notification.create({
-          data: {
-            type: "REPLY",
-            message: `${session.user.nickname || session.user.username} 回复了你在「${failureCase.title}」的评论`,
-            link: `/cases/${slug}`,
-            userId: parentComment.authorId,
-          },
+        await createNotification({
+          type: "REPLY",
+          message: `${session.user.nickname || session.user.username} 回复了你在「${failureCase.title}」的评论`,
+          link: `/cases/${slug}`,
+          userId: parentComment.authorId,
         });
       }
     }

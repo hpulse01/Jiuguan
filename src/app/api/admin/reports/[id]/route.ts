@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { apiRequireAdminAccess, isAuthError, logSensitiveAction } from "@/lib/api-auth";
+import { createNotification } from "@/lib/notification";
 
 export async function PUT(
   request: NextRequest,
@@ -49,13 +50,11 @@ export async function PUT(
         `举报「${report.reason}」已${action === "resolve" ? "处理" : "驳回"}`
       ),
       // 通知举报者处理结果
-      db.notification.create({
-        data: {
-          type: "REPORT_HANDLED",
-          message: `您对案例「${report.case.title}」的举报已${action === "resolve" ? "处理" : "驳回"}`,
-          userId: report.reporterId,
-          link: `/cases/${report.case.slug}`,
-        },
+      createNotification({
+        type: "REPORT_HANDLED",
+        message: `您对案例「${report.case.title}」的举报已${action === "resolve" ? "处理" : "驳回"}`,
+        userId: report.reporterId,
+        link: `/cases/${report.case.slug}`,
       }),
     ];
 

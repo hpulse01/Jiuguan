@@ -38,6 +38,7 @@ async function ensureSuperAdmin() {
       data: {
         role: "SUPER_ADMIN",
         passwordHash,
+        emailVerified: true,
         isBanned: false,
       },
     });
@@ -61,6 +62,7 @@ async function ensureSuperAdmin() {
         username: "superadmin",
         passwordHash,
         role: "SUPER_ADMIN",
+        emailVerified: true,
         profile: {
           create: {
             nickname: "酒馆掌柜",
@@ -112,6 +114,7 @@ async function main() {
       username: "admin",
       passwordHash: adminPassword,
       role: "ADMIN",
+      emailVerified: true,
       profile: {
         create: {
           nickname: "酒馆管理员",
@@ -132,6 +135,7 @@ async function main() {
       username: "moderator",
       passwordHash: modPassword,
       role: "MODERATOR",
+      emailVerified: true,
       profile: {
         create: {
           nickname: "酒馆小二",
@@ -152,6 +156,7 @@ async function main() {
       username: "testuser",
       passwordHash: userPassword,
       role: "USER",
+      emailVerified: true,
       profile: {
         create: {
           nickname: "老酒客",

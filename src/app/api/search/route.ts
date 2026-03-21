@@ -17,19 +17,52 @@ export async function GET(request: NextRequest) {
       status: "PUBLISHED",
     };
 
-    // 文本搜索
+    // 尝试使用全文搜索，失败则回退到 LIKE
+    let useFullTextSearch = false;
+    let fullTextIds: string[] = [];
+
     if (q.trim()) {
-      where.OR = [
-        { title: { contains: q, mode: "insensitive" } },
-        { summary: { contains: q, mode: "insensitive" } },
-        { background: { contains: q, mode: "insensitive" } },
-        { rootCause: { contains: q, mode: "insensitive" } },
-        { adviceToOthers: { contains: q, mode: "insensitive" } },
-        { earliestWarning: { contains: q, mode: "insensitive" } },
-        { outcome: { contains: q, mode: "insensitive" } },
-        // 标签名搜索
-        { tags: { some: { tag: { name: { contains: q, mode: "insensitive" } } } } },
-      ];
+      try {
+        // 尝试 PostgreSQL 全文搜索
+        const searchTerms = q.trim().split(/\s+/).map(t => t.replace(/[&|!():*]/g, '')).filter(Boolean);
+        if (searchTerms.length > 0) {
+          const tsQuery = searchTerms.join(" & ");
+          const results = await db.$queryRawUnsafe<{ id: string; rank: number }[]>(
+            `SELECT id, ts_rank("searchVector", to_tsquery('simple', $1)) as rank
+             FROM "FailureCase"
+             WHERE "searchVector" @@ to_tsquery('simple', $1) AND status = 'PUBLISHED'
+             ORDER BY rank DESC`,
+            tsQuery
+          );
+          fullTextIds = results.map(r => r.id);
+          useFullTextSearch = true;
+        }
+      } catch {
+        // 全文搜索不可用（searchVector 列不存在），回退到 LIKE
+        useFullTextSearch = false;
+      }
+
+      if (useFullTextSearch) {
+        if (fullTextIds.length === 0) {
+          return NextResponse.json({
+            cases: [],
+            pagination: { page, pageSize, total: 0, totalPages: 0 },
+          });
+        }
+        where.id = { in: fullTextIds };
+      } else {
+        // 回退：LIKE 搜索
+        where.OR = [
+          { title: { contains: q, mode: "insensitive" } },
+          { summary: { contains: q, mode: "insensitive" } },
+          { background: { contains: q, mode: "insensitive" } },
+          { rootCause: { contains: q, mode: "insensitive" } },
+          { adviceToOthers: { contains: q, mode: "insensitive" } },
+          { earliestWarning: { contains: q, mode: "insensitive" } },
+          { outcome: { contains: q, mode: "insensitive" } },
+          { tags: { some: { tag: { name: { contains: q, mode: "insensitive" } } } } },
+        ];
+      }
     }
 
     // 分类筛选

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { createNotification } from "@/lib/notification";
 
 export async function POST(
   request: NextRequest,
@@ -51,13 +52,11 @@ export async function POST(
     });
 
     // Notify the target user
-    await db.notification.create({
-      data: {
-        type: "FOLLOW",
-        message: `${session.user.nickname || session.user.username} 关注了你`,
-        link: `/users/${session.user.username}`,
-        userId: targetUser.id,
-      },
+    await createNotification({
+      type: "FOLLOW",
+      message: `${session.user.nickname || session.user.username} 关注了你`,
+      link: `/users/${session.user.username}`,
+      userId: targetUser.id,
     });
 
     return NextResponse.json({ followed: true, message: "已关注" });
