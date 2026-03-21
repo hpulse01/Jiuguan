@@ -19,7 +19,7 @@ interface DraftItem {
 }
 
 export default function MyDraftsPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [drafts, setDrafts] = useState<DraftItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,7 +83,7 @@ export default function MyDraftsPage() {
 
         {drafts.length === 0 ? (
           <EmptyState
-            icon={<FileEdit className="h-12 w-12 text-stone-600" />}
+            icon={FileEdit}
             title="暂无草稿"
             description="你还没有保存任何草稿"
           />

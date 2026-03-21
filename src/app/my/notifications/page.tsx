@@ -12,7 +12,7 @@ import { Loader2, Bell, BellOff, CheckCheck, MessageSquare, ThumbsUp, Heart, Boo
 interface Notification {
   id: string;
   type: string;
-  content: string;
+  message: string;
   link: string | null;
   isRead: boolean;
   createdAt: string;
@@ -118,7 +118,7 @@ export default function NotificationsPage() {
 
         {notifications.length === 0 ? (
           <EmptyState
-            icon={<Bell className="h-12 w-12 text-stone-600" />}
+            icon={Bell}
             title="暂无通知"
             description={showUnread ? "没有未读通知" : "暂时没有任何通知"}
           />
@@ -144,10 +144,10 @@ export default function NotificationsPage() {
                         onClick={() => !n.isRead && markRead(n.id)}
                         className="text-sm text-stone-200 hover:text-amber-400 transition-colors"
                       >
-                        {n.content}
+                        {n.message}
                       </Link>
                     ) : (
-                      <p className="text-sm text-stone-200">{n.content}</p>
+                      <p className="text-sm text-stone-200">{n.message}</p>
                     )}
                     <p className="text-xs text-stone-600 mt-1">
                       {new Date(n.createdAt).toLocaleString("zh-CN")}

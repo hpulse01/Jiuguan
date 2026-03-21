@@ -109,11 +109,11 @@ export function Header() {
                 <button className="flex items-center gap-1.5 rounded-md p-1 transition-colors hover:bg-[var(--accent)]">
                   <Avatar className="h-8 w-8 border border-[var(--border)]">
                     <AvatarImage
-                      src={user.image ?? undefined}
-                      alt={user.name ?? "用户头像"}
+                      src={user.avatar ?? undefined}
+                      alt={user.nickname ?? user.username ?? "用户头像"}
                     />
                     <AvatarFallback className="bg-tavern-800 text-xs text-tavern-200">
-                      {user.name?.charAt(0)?.toUpperCase() ?? "U"}
+                      {(user.nickname || user.username)?.charAt(0)?.toUpperCase() ?? "U"}
                     </AvatarFallback>
                   </Avatar>
                   <ChevronDown className="hidden h-3.5 w-3.5 text-[var(--muted-foreground)] sm:block" />
@@ -124,14 +124,14 @@ export function Header() {
                 className="w-48 border-[var(--border)] bg-[var(--popover)] text-[var(--popover-foreground)]"
               >
                 <div className="px-3 py-2">
-                  <p className="text-sm font-medium">{user.name}</p>
+                  <p className="text-sm font-medium">{user.nickname || user.username}</p>
                   <p className="truncate text-xs text-[var(--muted-foreground)]">
                     {user.email}
                   </p>
                 </div>
                 <DropdownMenuSeparator className="bg-[var(--border)]" />
                 <DropdownMenuItem asChild>
-                  <Link href="/profile" className="flex cursor-pointer items-center gap-2">
+                  <Link href={`/user/${user.username}`} className="flex cursor-pointer items-center gap-2">
                     <User className="h-4 w-4" />
                     我的主页
                   </Link>

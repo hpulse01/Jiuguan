@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { db } from "@/lib/db";
 import { CaseCard } from "@/components/case-card";
 import Link from "next/link";
@@ -16,13 +18,14 @@ export const metadata: Metadata = {
   description: "发现精选失败案例，从他人的经历中获得启发",
 };
 
-// Helper to format case data for CaseCard
-function formatCase(c: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function formatCase(c: Record<string, any>) {
   return {
     slug: c.slug,
     title: c.title,
     summary: c.summary,
     categoryName: c.category.name,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tags: c.tags.map((t: any) => t.tag.name),
     authorName: c.isAnonymous
       ? "匿名"
@@ -100,6 +103,7 @@ async function getCuratedCases() {
 interface SectionProps {
   icon: React.ReactNode;
   title: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cases: any[];
   moreHref: string;
   moreLabel?: string;

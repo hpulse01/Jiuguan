@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CaseCard } from "@/components/case-card";
 import { Pagination } from "@/components/pagination";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { CaseCardSkeletonGrid } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { Search, SlidersHorizontal, X } from "lucide-react";
@@ -44,7 +43,15 @@ const sortOptions: { key: SortOption; label: string }[] = [
   { key: "resonance", label: "最共鸣" },
 ];
 
-export default function SearchPage() {
+export default function SearchPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-stone-950 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-stone-600 border-t-amber-500" /></div>}>
+      <SearchPage />
+    </Suspense>
+  );
+}
+
+function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 

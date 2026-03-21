@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import {
@@ -22,13 +21,9 @@ import {
   AlertTriangle,
   Target,
   Crosshair,
-  Zap,
   EyeOff,
-  Bell,
   CheckCircle2,
   Search,
-  RotateCcw,
-  MessageSquare,
   X,
 } from "lucide-react";
 
@@ -134,7 +129,7 @@ export default function PublishPage() {
         const err = await res.json();
         throw new Error(err.message || "保存失败");
       }
-      toast({ title: "草稿已保存", description: "可在"我的草稿"中继续编辑" });
+      toast({ title: "草稿已保存", description: "可在「我的草稿」中继续编辑" });
       router.push("/my/drafts");
     } catch (err) {
       toast({

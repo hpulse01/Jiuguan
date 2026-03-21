@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { CaseCard } from "@/components/case-card";
@@ -138,7 +140,7 @@ export default async function HomePage() {
               </Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="text-base px-8">
-              <Link href="/cases/new">
+              <Link href="/publish">
                 <Sparkles className="mr-2 h-5 w-5" />
                 分享你的经历
               </Link>
@@ -379,7 +381,7 @@ export default async function HomePage() {
             坦诚地分享一次失败经历，可能帮助无数人绕过同样的弯路
           </p>
           <Button asChild size="lg" className="text-base px-10">
-            <Link href="/cases/new">
+            <Link href="/publish">
               开始分享
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
