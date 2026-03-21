@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, Save, ArrowLeft, X } from "lucide-react";
+import { Loader2, Save, ArrowLeft, X, Send, AlertTriangle } from "lucide-react";
 
 interface Category {
   id: string;
@@ -38,6 +38,7 @@ export default function EditCasePage({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [caseStatus, setCaseStatus] = useState<string>("");
 
   const {
     register,
@@ -75,6 +76,7 @@ export default function EditCasePage({
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const tagIds = caseData.tags?.map((t: any) => t.tag?.id || t.tagId) || [];
         setSelectedTags(tagIds);
+        setCaseStatus(caseData.status || "");
 
         reset({
           title: caseData.title || "",
@@ -141,6 +143,29 @@ export default function EditCasePage({
     }
   }
 
+  async function submitForReview() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/cases/${slug}/submit`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "提交失败");
+      }
+      toast({ title: "提交成功", description: "案例已提交审核，请等待审核结果" });
+      router.push("/my/cases");
+    } catch (err) {
+      toast({
+        title: "提交失败",
+        description: err instanceof Error ? err.message : "请稍后重试",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (status === "loading" || loading) {
     return (
       <div className="min-h-screen bg-stone-950 flex items-center justify-center">
@@ -165,6 +190,15 @@ export default function EditCasePage({
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-stone-100">编辑案例</h1>
           <p className="text-sm text-stone-500 mt-1">修改你的失败案例</p>
+          {caseStatus === "REJECTED" && (
+            <div className="mt-3 p-3 rounded-lg border border-red-800/40 bg-red-950/20 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm text-red-300 font-medium">该案例未通过审核</p>
+                <p className="text-xs text-red-400/70 mt-0.5">请根据审核意见修改后重新提交审核。</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -320,8 +354,8 @@ export default function EditCasePage({
             </Label>
           </div>
 
-          <div className="flex justify-end">
-            <Button type="submit" disabled={saving}>
+          <div className="flex justify-end gap-3">
+            <Button type="submit" variant="outline" disabled={saving} className="border-stone-700">
               {saving ? (
                 <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
               ) : (
@@ -329,6 +363,20 @@ export default function EditCasePage({
               )}
               保存修改
             </Button>
+            {(caseStatus === "DRAFT" || caseStatus === "REJECTED") && (
+              <Button
+                type="button"
+                disabled={saving}
+                onClick={submitForReview}
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-1.5" />
+                )}
+                {caseStatus === "REJECTED" ? "重新提交审核" : "提交审核"}
+              </Button>
+            )}
           </div>
         </form>
       </div>

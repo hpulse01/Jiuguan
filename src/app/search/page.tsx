@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CaseCardSkeletonGrid } from "@/components/loading-skeleton";
 import { EmptyState } from "@/components/empty-state";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, Tag } from "lucide-react";
 
 type SortOption = "latest" | "hot" | "useful" | "resonance";
 
@@ -21,7 +21,7 @@ interface CaseResult {
   publishedAt: string;
   createdAt: string;
   category: { name: string };
-  tags: { tag: { name: string } }[];
+  tags: { id: string; name: string }[];
   author: {
     username: string;
     profile?: { nickname?: string; avatar?: string } | null;
@@ -59,24 +59,31 @@ function SearchPage() {
   const initialSort = (searchParams.get("sort") as SortOption) || "latest";
   const initialPage = parseInt(searchParams.get("page") || "1", 10);
   const initialCategoryId = searchParams.get("categoryId") || "";
+  const initialTagIds = searchParams.get("tagIds") || "";
 
   const [query, setQuery] = useState(initialQ);
   const [sort, setSort] = useState<SortOption>(initialSort);
   const [page, setPage] = useState(initialPage);
   const [categoryId, setCategoryId] = useState(initialCategoryId);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
+    initialTagIds ? initialTagIds.split(",") : []
+  );
   const [cases, setCases] = useState<CaseResult[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [categories, setCategories] = useState<
-    { id: string; name: string; slug: string }[]
-  >([]);
+  const [categories, setCategories] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [allTags, setAllTags] = useState<{ id: string; name: string }[]>([]);
+  const [showTagFilter, setShowTagFilter] = useState(!!initialTagIds);
 
-  // Fetch categories on mount
+  // Fetch categories and tags on mount
   useEffect(() => {
-    fetch("/api/categories")
-      .then((r) => r.json())
-      .then((data) => setCategories(Array.isArray(data) ? data : []))
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/categories").then((r) => r.json()),
+      fetch("/api/tags").then((r) => r.json()),
+    ]).then(([cats, tgs]) => {
+      setCategories(Array.isArray(cats) ? cats : []);
+      setAllTags(Array.isArray(tgs) ? tgs : []);
+    }).catch(() => {});
   }, []);
 
   const fetchCases = useCallback(async () => {
@@ -88,27 +95,22 @@ function SearchPage() {
       params.set("page", String(page));
       params.set("pageSize", String(PAGE_SIZE));
       if (categoryId) params.set("categoryId", categoryId);
+      if (selectedTagIds.length > 0) params.set("tagIds", selectedTagIds.join(","));
 
+      // 统一使用 search API（支持无关键词搜索）
       const endpoint = query ? "/api/search" : "/api/cases";
       const res = await fetch(`${endpoint}?${params}`);
       const data = await res.json();
 
-      if (query) {
-        // Search API returns { results, total }
-        setCases(data.results || []);
-        setTotal(data.total || 0);
-      } else {
-        // Cases API returns { cases, total }
-        setCases(data.cases || []);
-        setTotal(data.total || 0);
-      }
+      setCases(data.cases || []);
+      setTotal(data.pagination?.total || 0);
     } catch {
       setCases([]);
       setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [query, sort, page, categoryId]);
+  }, [query, sort, page, categoryId, selectedTagIds]);
 
   useEffect(() => {
     fetchCases();
@@ -121,14 +123,22 @@ function SearchPage() {
     if (sort !== "latest") params.set("sort", sort);
     if (page > 1) params.set("page", String(page));
     if (categoryId) params.set("categoryId", categoryId);
+    if (selectedTagIds.length > 0) params.set("tagIds", selectedTagIds.join(","));
     const qs = params.toString();
     router.replace(`/search${qs ? `?${qs}` : ""}`, { scroll: false });
-  }, [query, sort, page, categoryId, router]);
+  }, [query, sort, page, categoryId, selectedTagIds, router]);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
+    setPage(1);
+  }
+
+  function toggleTag(tagId: string) {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+    );
     setPage(1);
   }
 
@@ -151,16 +161,13 @@ function SearchPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="搜索失败案例..."
+                placeholder="搜索标题、正文、标签..."
                 className="pl-10 bg-stone-900/50 border-stone-700 text-stone-100 placeholder:text-stone-600"
               />
               {query && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setQuery("");
-                    setPage(1);
-                  }}
+                  onClick={() => { setQuery(""); setPage(1); }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-stone-300"
                 >
                   <X className="h-4 w-4" />
@@ -175,25 +182,38 @@ function SearchPage() {
         </form>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          {/* Sort tabs */}
-          <div className="flex items-center gap-1 bg-stone-900/50 rounded-lg p-1 border border-stone-800/40">
-            {sortOptions.map((opt) => (
-              <button
-                key={opt.key}
-                onClick={() => {
-                  setSort(opt.key);
-                  setPage(1);
-                }}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  sort === opt.key
-                    ? "bg-stone-800 text-stone-50 shadow-sm"
-                    : "text-stone-400 hover:text-stone-200"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+        <div className="space-y-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Sort tabs */}
+            <div className="flex items-center gap-1 bg-stone-900/50 rounded-lg p-1 border border-stone-800/40">
+              {sortOptions.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => { setSort(opt.key); setPage(1); }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    sort === opt.key
+                      ? "bg-stone-800 text-stone-50 shadow-sm"
+                      : "text-stone-400 hover:text-stone-200"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tag filter toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTagFilter(!showTagFilter)}
+              className={`border-stone-700 ${showTagFilter ? "text-amber-400" : "text-stone-400"}`}
+            >
+              <Tag className="h-3.5 w-3.5 mr-1.5" />
+              标签筛选
+              {selectedTagIds.length > 0 && (
+                <span className="ml-1.5 bg-amber-600 text-white text-xs rounded-full px-1.5">{selectedTagIds.length}</span>
+              )}
+            </Button>
           </div>
 
           {/* Category filter */}
@@ -201,25 +221,19 @@ function SearchPage() {
             <div className="flex flex-wrap items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-stone-500" />
               <button
-                onClick={() => {
-                  setCategoryId("");
-                  setPage(1);
-                }}
+                onClick={() => { setCategoryId(""); setPage(1); }}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                   !categoryId
                     ? "bg-amber-600 text-stone-50"
                     : "bg-stone-800 text-stone-400 hover:text-stone-200"
                 }`}
               >
-                全部
+                全部分类
               </button>
               {categories.map((cat) => (
                 <button
                   key={cat.id}
-                  onClick={() => {
-                    setCategoryId(cat.id);
-                    setPage(1);
-                  }}
+                  onClick={() => { setCategoryId(cat.id); setPage(1); }}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                     categoryId === cat.id
                       ? "bg-amber-600 text-stone-50"
@@ -229,6 +243,39 @@ function SearchPage() {
                   {cat.name}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Tag filter */}
+          {showTagFilter && allTags.length > 0 && (
+            <div className="p-3 rounded-lg border border-stone-800/40 bg-stone-900/20">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-stone-500">选择标签组合筛选</span>
+                {selectedTagIds.length > 0 && (
+                  <button
+                    onClick={() => { setSelectedTagIds([]); setPage(1); }}
+                    className="text-xs text-stone-500 hover:text-amber-400"
+                  >
+                    清除
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {allTags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    onClick={() => toggleTag(tag.id)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                      selectedTagIds.includes(tag.id)
+                        ? "bg-amber-600 text-stone-50"
+                        : "bg-stone-800 text-stone-400 hover:text-stone-200"
+                    }`}
+                  >
+                    {tag.name}
+                    {selectedTagIds.includes(tag.id) && <X className="inline h-3 w-3 ml-0.5" />}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -252,7 +299,7 @@ function SearchPage() {
                 title={c.title}
                 summary={c.summary}
                 categoryName={c.category.name}
-                tags={c.tags.map((t) => t.tag.name)}
+                tags={c.tags.map((t) => t.name)}
                 authorName={
                   c.isAnonymous
                     ? "匿名"
@@ -275,7 +322,13 @@ function SearchPage() {
         ) : (
           <EmptyState
             title="没有找到相关案例"
-            description={query ? `没有找到与"${query}"相关的案例，试试其他关键词` : "暂无案例"}
+            description={
+              query
+                ? `没有找到与"${query}"相关的案例，试试其他关键词或调整筛选条件`
+                : selectedTagIds.length > 0
+                  ? "没有找到同时包含这些标签的案例，试试减少标签"
+                  : "暂无案例"
+            }
           />
         )}
 
