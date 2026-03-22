@@ -5,14 +5,20 @@
 
 import nodemailer from "nodemailer";
 
+const smtpPort = parseInt(process.env.SMTP_PORT || "587");
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT || "587"),
+  port: smtpPort,
   secure: process.env.SMTP_SECURE === "true",
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  // 本地开发服务器不支持 TLS，跳过 STARTTLS
+  ...(["localhost", "127.0.0.1"].includes(process.env.SMTP_HOST || "") && {
+    ignoreTLS: true,
+  }),
 });
 
 const FROM_EMAIL = process.env.SMTP_FROM || "酒馆 <noreply@jiuguan.com>";
